@@ -3,3 +3,4 @@
 *.npy
 *.ipynb
 .vscode*
+*.code-workspace
