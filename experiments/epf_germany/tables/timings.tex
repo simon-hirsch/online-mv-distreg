@@ -1,0 +1,16 @@
+\begin{tabular}{lrrrrr}
+\toprule
+Model & Initial Fit & Avg. Update & Std. Update & Total Time & Est. Speedup \\
+\midrule
+LARX + N(0, $\sigma$) & 1.74 & 0.02 & 0.04 & 13.70 & $\times$93 \\
+LARX + N(0, $\Sigma$) & 1.74 & 0.02 & 0.04 & 13.70 & $\times$93 \\
+oDistReg+GC & 25.08 & 0.12 & 0.07 & 114.72 & $\times$160 \\
+oDistReg+spGC & 25.34 & 0.27 & 0.07 & 227.31 & $\times$82 \\
+oMvDistReg(t, CD, OLS, ind) & 46.44 & 0.09 & 0.07 & 113.68 & $\times$300 \\
+oMvDistReg(t, LRA, OLS, ind) & 55.32 & 0.11 & 0.03 & 132.70 & $\times$306 \\
+oMvDistReg(t, CD, OLS) & 146.94 & 0.31 & 0.01 & 377.33 & $\times$286 \\
+oMvDistReg(t, LRA, OLS) & 188.24 & 1.96 & 0.17 & 1628.10 & $\times$85 \\
+oMvDistReg(t, CD, LASSO) & 290.06 & 3.07 & 0.03 & 2549.02 & $\times$83 \\
+oMvDistReg(t, LRA, LASSO) & 864.99 & 0.68 & 0.04 & 1363.32 & $\times$466 \\
+\bottomrule
+\end{tabular}

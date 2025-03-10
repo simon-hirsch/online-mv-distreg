@@ -1,0 +1,241 @@
+import numba as nb
+import numpy as np
+import pandas as pd
+import rolch
+import scipy.stats as st
+import scoringrules as sr
+from tqdm import tqdm
+
+
+## DSS Currently not in the scoringrules package
+@nb.guvectorize(
+    [
+        "void(float32[:], float32[:,:], float32[:])",
+        "void(float64[:], float64[:,:], float64[:])",
+    ],
+    "(d),(m,d)->()",
+)
+def dawid_sebastiani_scoore(obs: np.ndarray, fct: np.ndarray, out: np.ndarray):
+    M = fct.shape[0]
+    bias = obs - (np.sum(fct, axis=0) / M)
+    cov = np.cov(fct, rowvar=False).astype(bias.dtype)
+    prec = np.linalg.inv(cov).astype(bias.dtype)
+    log_det = np.log(np.linalg.det(cov))
+    bias_precision = bias.T @ prec @ bias
+    out[0] = log_det + bias_precision
+
+
+@nb.guvectorize(
+    [
+        "void(float32[:], float32[:,:], float32[:])",
+        "void(float64[:], float64[:,:], float64[:])",
+    ],
+    "(d),(m,d)->()",
+)
+def energy_score_parallel(
+    obs: np.ndarray,
+    fct: np.ndarray,
+    out: np.ndarray,
+):
+    """Compute the Energy Score for a finite ensemble."""
+    M = fct.shape[0]
+
+    e_1 = 0.0
+    e_2 = 0.0
+    for i in range(M):
+        e_1 += float(np.linalg.norm(fct[i] - obs))
+        e_2_inner = np.zeros(M)
+        for j in nb.prange(M):
+            e_2_inner[j] = float(np.linalg.norm(fct[i] - fct[j]))
+        e_2 += np.sum(e_2_inner)
+
+    out[0] = e_1 / M - 0.5 / (M**2) * e_2
+
+
+@nb.guvectorize(
+    [
+        "void(float32[:], float32[:,:], float32[:])",
+        "void(float64[:], float64[:,:], float64[:])",
+    ],
+    "(d),(m,d)->()",
+)
+def energy_score_fast(
+    obs: np.ndarray,
+    fct: np.ndarray,
+    out: np.ndarray,
+):
+    """Compute the Energy Score for a finite ensemble."""
+    M = fct.shape[0]
+
+    e_1 = 0.0
+    e_2 = 0.0
+    for i in range(M):
+        e_1 += float(np.linalg.norm(fct[i] - obs))
+        for j in range(i, M):
+            e_2 += float(np.linalg.norm(fct[i] - fct[j]))
+
+    out[0] = e_1 / M - 1 / (M**2) * e_2
+
+
+# Copula likelihood
+def gaussian_copula_log_likelihood(
+    uniform: np.ndarray,
+    cov: np.ndarray,
+) -> np.ndarray:
+    # Naive estimation as in the paper by, see pages 106/107
+    # @article{arbenz2013bayesian,
+    #     title={Bayesian copulae distributions, with application to operational risk management—some comments},
+    #     author={Arbenz, Philipp},
+    #     journal={Methodology and computing in applied probability},
+    #     volume={15},
+    #     pages={105--108},
+    #     year={2013},
+    #     publisher={Springer}
+    # }
+
+    H = uniform.shape[1]
+    std = cov[:, range(H), range(H)] ** 0.5
+    corr = cov / (std[..., None] @ std[:, None, :])
+    prec = np.linalg.inv(corr) - np.diag(np.ones(H))[None, ...]
+    transf_unif = st.norm().ppf(np.clip(uniform, 1e-10, 1 - 1e-10))
+    term_1 = (
+        -1 / 2 * (transf_unif[:, None, :] @ prec @ transf_unif[:, :, None]).squeeze()
+    )
+    term_2 = 1 / np.sqrt(np.linalg.det(corr))
+    return np.log(term_2) + term_1
+
+
+df_X = pd.read_csv("prepared_x.csv", index_col=0)
+df_y = pd.read_csv("prepared_y.csv", index_col=0)
+df_X["constant"] = 1
+
+IDX_TRAIN = df_X.flag.to_numpy() == "train"
+IDX_TEST = df_X.flag.to_numpy() == "test"
+
+N_TRAIN = np.sum(IDX_TRAIN)
+N_TEST = np.sum(IDX_TEST)
+H = df_y.shape[1]
+N = df_X.shape[0]
+
+KEY = "simulations"
+
+X = df_X.drop(["flag"], axis=1)
+y = df_y
+
+y_numpy = y.values
+X_numpy = X.values
+
+# Takes roughly 15 mins to calculate the scores
+sims_univariate = np.load("results/sims_univariate_benchmark.npz")[KEY]
+sims_copula = np.load("results/sims_copula.npz")[KEY]
+sims_multivariate = np.load("results/sims_multivariate.npz")[KEY]
+
+
+sims = np.concatenate(
+    (
+        sims_univariate,
+        sims_copula,
+        sims_multivariate,
+    ),
+    axis=1,
+)
+
+N_MODELS = sims.shape[1]
+N_SIMS = sims.shape[-2]
+
+scores = np.zeros([N_TEST, N_MODELS, 8])
+error = np.expand_dims(y_numpy[N_TRAIN:, :], 1) - sims.mean(-2)
+
+# RMSE
+# This is a bit of a curious definition, might change it later
+# We should make a distinction between the average RMSE per hour (averaged over time)
+# and the actual RMSE across all hours, all time squared afterwards
+scores[:, :, 0] = np.mean(error**2, axis=2)  # Need to take the sqrt at the end
+# L2/Frobenius Norm on the Error Vector
+scores[:, :, 1] = np.linalg.norm(error, ord=2, axis=2)
+
+
+# Variogram Score and Energy Score
+for m in tqdm(range(scores.shape[1])):
+    try:
+        print("CRPS")
+        # Ensemble CRPS
+        scores[:, m, 2] = sr.crps_ensemble(
+            y_numpy[N_TRAIN:, :],
+            sims[:, m, ...],
+            axis=-2,  # Ensemble dimension
+        ).mean(1)
+        print("VS")
+        scores[:, m, 3] = sr.variogram_score(
+            # y_numpy[IDX_TEST], sims[:, m, np.arange(N_SIMS // 2), :], p=1
+            y_numpy[IDX_TEST],
+            sims[:, m, :, :],
+            p=1,
+        )
+        scores[:, m, 4] = sr.variogram_score(
+            # y_numpy[IDX_TEST], sims[:, m, np.arange(N_SIMS // 2), :], p=0.5
+            y_numpy[IDX_TEST],
+            sims[:, m, :, :],
+            p=0.5,
+        )
+        print("ES")
+        scores[:, m, 5] = energy_score_fast(y_numpy[N_TRAIN:, :], sims[:, m, ...])
+        print("DSS")
+        scores[:, m, 6] = dawid_sebastiani_scoore(y_numpy[IDX_TEST, :], sims[:, m, ...])
+    except Exception as _:
+        print(f"Could not calculate score for model {m}.")
+
+print(np.round(scores.mean(0), 2))
+
+############### Log-Likelihood scores #####################
+file_univariate = np.load(file="results/pred_univariate_benchmark.npz")
+file_univariate_distreg = np.load("results/univariate_predictions_distreg.npz")
+file_copula = np.load(file="results/pred_copula.npz")
+file_multivariate = np.load(file="results/pred_multivariate.npz")
+
+## Predictions univariate
+predictions_loc_ar = file_univariate["predictions_loc"]
+predictions_cov_ar = file_univariate["predictions_cov"]
+for m in range(2):
+    # Gaussian ARX Models here
+    for t in range(N_TEST):
+        scores[t, m, 7] = -st.multivariate_normal(
+            mean=predictions_loc_ar[t],
+            cov=predictions_cov_ar[t] if m == 1 else np.diag(predictions_cov_ar[t]),
+        ).logpdf(y_numpy[N_TRAIN + t, :])
+
+## Predictions Copula
+pred_uni_copula = file_copula["predictions_uni"]
+pred_cov_copula = file_copula["predictions_cov"]
+
+marginal_loglikelihood = np.zeros((N_TEST, H))
+marginal_predictions = file_univariate_distreg["predictions_outofsample"]
+for h in range(H):
+    marginal_loglikelihood[:, h] = rolch.DistributionT().pdf(
+        y_numpy[N_TRAIN:, h], marginal_predictions[:, h, :]
+    )
+
+for c, m in enumerate(range(2, 4)):
+    # Copula log score here!!
+    scores[:, m, 7] = -(
+        gaussian_copula_log_likelihood(pred_uni_copula, pred_cov_copula[:, c])
+        + np.log(marginal_loglikelihood).sum(1)
+    )
+
+## Predictions Mutlviariate model
+predictions_loc_mv = file_multivariate["predictions_loc"]
+predictions_cov_mv = file_multivariate["predictions_cov"]
+predictions_dof_mv = file_multivariate["predictions_dof"]
+
+for m, idx in enumerate(range(4, 10)):
+    # MV GAMLSS Models here
+    for t in range(N_TEST):
+        scores[t, idx, 7] = -st.multivariate_t(
+            loc=predictions_loc_mv[t, m],
+            shape=predictions_cov_mv[t, m],
+            df=predictions_dof_mv[t, m],
+        ).logpdf(y_numpy[N_TRAIN + t, :])
+
+np.save(file="results/scores", arr=scores)
+
+print(np.round(scores.mean(0), 2))
