@@ -15,11 +15,19 @@ timings_mv_distreg = np.load(PATH_DISTREG_MUL)[KEY].T
 timings_arx = np.load(PATH_ARX)[KEY]
 
 
-timings = np.hstack((timings_arx, timings_copula, timings_mv_distreg))
+timings = np.hstack(
+    (
+        timings_arx,
+        timings_univ_distreg.sum(axis=1, keepdims=True),
+        timings_copula,
+        timings_mv_distreg,
+    )
+)
 
 MODELS = [
     "LARX + N(0, $\sigma$)",
     "LARX + N(0, $\Sigma$)",
+    "oDistReg",
     "oDistReg+GC",
     "oDistReg+spGC",
     "oMvDistReg(t, CD, OLS, ind)",
