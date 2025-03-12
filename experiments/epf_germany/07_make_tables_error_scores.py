@@ -81,7 +81,7 @@ FULL_SCORE_NAMES = [
     "Dawid Sebastiani Score",
     "Log-Score",
 ]
-indices = [5, 6, 7, 8]
+indices = [4, 6, 7, 8]
 
 for i, s in enumerate(indices):
     for m1, m2 in product(range(N_MODELS), range(N_MODELS)):
