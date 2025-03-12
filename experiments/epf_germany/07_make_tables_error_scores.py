@@ -9,8 +9,8 @@ from matplotlib.colors import LinearSegmentedColormap
 
 scores = np.load(file="results/scores.npy")
 # Normalize the Variogram Score
-scores[:, :, 4] = np.power(scores[:, :, 4] / 24, 0.5)
-scores[:, :, 3] = np.power(scores[:, :, 3] / 24, 0.5)
+scores[:, :, 4] = np.power(scores[:, :, 4] / 24**2, 0.5)
+scores[:, :, 3] = np.power(scores[:, :, 3] / 24**2, 0.5)
 
 
 N_MODELS = scores.shape[1]
