@@ -1,14 +1,16 @@
 # ENSURE THAT YOU HAVE THE SRC CODE ON THE PATH
 import sys
+
 sys.path.insert(1, "../../../online_mv_distreg/")
 
 import time
+
 import numpy as np
 import pandas as pd
 import rolch
+from const_and_helper import N_SIMS, H
 from tqdm import tqdm
 
-from const_and_helper import N_SIMS, H
 from src.estimator.online_copula import OnlineGaussianCopula, OnlineSparseGaussianCopula
 
 print("ROLCH:", rolch.__version__)
@@ -49,7 +51,7 @@ copula[1] = OnlineSparseGaussianCopula()
 N_COPULA = len(copula)
 RANDOM_STATE = 123
 
-simulations_copula = np.empty([N_TEST, N_COPULA, N_SIMS, H])
+simulations_copula = np.empty([N_TEST, N_COPULA + 1, N_SIMS, H])
 margin_distribution = rolch.DistributionT()
 timings_copula = np.zeros((N_TEST, N_COPULA))
 
@@ -99,14 +101,21 @@ for t, i in tqdm(enumerate(range(N_TRAIN, N))):
     predictions_loc_copula[t, 1] = copula[1].loc
     predictions_cov_copula[t, 1] = copula[1].opt_cov
 
+    # Simulations from the marginal only
+    simulations_copula[t, 0, ...] = margin_distribution.rvs(
+        theta=univariate_prediction[t, :, :], size=N_SIMS
+    ).T
+
+    # Simulation from the copula
     for c in copula.keys():
         samples_uniform = copula[c].sample(N_SIMS)  # Need to make this pass-able
         samples_margin = np.zeros_like(samples_uniform)
         for h in range(H):
-            simulations_copula[t, c, ..., h] = margin_distribution.ppf(
+            simulations_copula[t, c + 1, ..., h] = margin_distribution.ppf(
                 samples_uniform[:, h],
                 univariate_prediction[[t], h],
             )
+
 
 prediction_uniform = np.zeros((N_TEST, H))
 for h in range(H):

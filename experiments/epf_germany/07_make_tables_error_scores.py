@@ -10,13 +10,14 @@ from matplotlib.colors import LinearSegmentedColormap
 scores = np.load(file="results/scores.npy")
 # Normalize the Variogram Score
 scores[:, :, 4] = np.power(scores[:, :, 4] / 24**2, 0.5)
-scores[:, :, 3] = np.power(scores[:, :, 3] / 24**2, 0.5)
+scores[:, :, 5] = np.power(scores[:, :, 5] / 24**2, 0.5)
 
 
 N_MODELS = scores.shape[1]
 N_BENCHMARKS = 4  # N_COPULA + N_MODELS_AR
 SCORE_NAMES = [
     "RMSE",
+    "MAE",
     "L2 Loss",
     "CRPS",
     "$\\text{VS}_{p=1}$",
@@ -31,6 +32,7 @@ avg_scores = pd.DataFrame(avg_scores, columns=SCORE_NAMES)
 avg_scores["Model"] = [
     "LARX + N(0, $\sigma$)",
     "LARX + N(0, $\Sigma$)",
+    "oDistReg",
     "oDistReg+GC",
     "oDistReg+spGC",
     "oMvDistReg(t, CD, OLS, ind)",
@@ -44,9 +46,10 @@ avg_scores["RMSE"] = avg_scores["RMSE"] ** 0.5
 
 scores_chosen = [
     "RMSE",
+    "MAE",
     "CRPS",
-    "$\\text{VS}_{p=1}$",
     "$\\text{VS}_{p=0.5}$",
+    "$\\text{VS}_{p=1}$",
     "ES",
     "DSS",
     "LS",
@@ -78,7 +81,7 @@ FULL_SCORE_NAMES = [
     "Dawid Sebastiani Score",
     "Log-Score",
 ]
-indices = [4, 5, 6, 7]
+indices = [5, 6, 7, 8]
 
 for i, s in enumerate(indices):
     for m1, m2 in product(range(N_MODELS), range(N_MODELS)):
@@ -95,9 +98,7 @@ for i, s in enumerate(indices):
 colors = [(0, "green"), (0.5, "yellow"), (0.75, "red"), (1, "black")]
 cmap = LinearSegmentedColormap.from_list("custom_cmap", colors)
 
-
 names = avg_scores["Model"].tolist()
-
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 11), sharex=True, sharey=True)
 for i, ax in enumerate(axes.flatten()):
@@ -114,9 +115,9 @@ for i, ax in enumerate(axes.flatten()):
         cbar_kws={"label": "$p$-value for the Diebold-Mariano Test", "shrink": 0.5},
     )
     ax.set_title(FULL_SCORE_NAMES[i])
-    ax.set_yticks(np.arange(0.5, 10))
+    ax.set_yticks(np.arange(0.5, len(names)))
     ax.set_yticklabels(names, rotation=0, ha="right", rotation_mode="anchor")
-    ax.set_xticks(np.arange(0.5, 10))
+    ax.set_xticks(np.arange(0.5, len(names)))
     ax.set_xticklabels(names, rotation=45, ha="right", rotation_mode="anchor")
 
 plt.tight_layout()

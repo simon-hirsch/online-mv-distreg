@@ -125,7 +125,7 @@ y = df_y
 y_numpy = y.values
 X_numpy = X.values
 
-# Takes roughly 15 mins to calculate the scores
+# Takes roughly 60 mins to calculate the scores
 sims_univariate = np.load("results/sims_univariate_benchmark.npz")[KEY]
 sims_copula = np.load("results/sims_copula.npz")[KEY]
 sims_multivariate = np.load("results/sims_multivariate.npz")[KEY]
@@ -143,16 +143,19 @@ sims = np.concatenate(
 N_MODELS = sims.shape[1]
 N_SIMS = sims.shape[-2]
 
-scores = np.zeros([N_TEST, N_MODELS, 8])
-error = np.expand_dims(y_numpy[N_TRAIN:, :], 1) - sims.mean(-2)
+scores = np.zeros([N_TEST, N_MODELS, 9])
+error_mean = np.expand_dims(y_numpy[N_TRAIN:, :], 1) - sims.mean(-2)
+error_med = np.expand_dims(y_numpy[N_TRAIN:, :], 1) - np.median(sims, axis=-2)
 
 # RMSE
+# MAE
 # This is a bit of a curious definition, might change it later
 # We should make a distinction between the average RMSE per hour (averaged over time)
 # and the actual RMSE across all hours, all time squared afterwards
-scores[:, :, 0] = np.mean(error**2, axis=2)  # Need to take the sqrt at the end
+scores[:, :, 0] = np.mean(error_mean**2, axis=2)  # Need to take the sqrt at the end
+scores[:, :, 1] = np.mean(np.abs(error_med), axis=2)
 # L2/Frobenius Norm on the Error Vector
-scores[:, :, 1] = np.linalg.norm(error, ord=2, axis=2)
+scores[:, :, 2] = np.linalg.norm(error_mean, ord=2, axis=2)
 
 
 # Variogram Score and Energy Score
@@ -160,28 +163,28 @@ for m in tqdm(range(scores.shape[1])):
     try:
         print("CRPS")
         # Ensemble CRPS
-        scores[:, m, 2] = sr.crps_ensemble(
+        scores[:, m, 3] = sr.crps_ensemble(
             y_numpy[N_TRAIN:, :],
             sims[:, m, ...],
             axis=-2,  # Ensemble dimension
         ).mean(1)
         print("VS")
-        scores[:, m, 3] = sr.variogram_score(
+        scores[:, m, 4] = sr.variogram_score(
             # y_numpy[IDX_TEST], sims[:, m, np.arange(N_SIMS // 2), :], p=1
             y_numpy[IDX_TEST],
             sims[:, m, :, :],
             p=1,
         )
-        scores[:, m, 4] = sr.variogram_score(
+        scores[:, m, 5] = sr.variogram_score(
             # y_numpy[IDX_TEST], sims[:, m, np.arange(N_SIMS // 2), :], p=0.5
             y_numpy[IDX_TEST],
             sims[:, m, :, :],
             p=0.5,
         )
         print("ES")
-        scores[:, m, 5] = energy_score_fast(y_numpy[N_TRAIN:, :], sims[:, m, ...])
+        scores[:, m, 6] = energy_score_fast(y_numpy[N_TRAIN:, :], sims[:, m, ...])
         print("DSS")
-        scores[:, m, 6] = dawid_sebastiani_scoore(y_numpy[IDX_TEST, :], sims[:, m, ...])
+        scores[:, m, 7] = dawid_sebastiani_scoore(y_numpy[IDX_TEST, :], sims[:, m, ...])
     except Exception as _:
         print(f"Could not calculate score for model {m}.")
 
@@ -199,7 +202,7 @@ predictions_cov_ar = file_univariate["predictions_cov"]
 for m in range(2):
     # Gaussian ARX Models here
     for t in range(N_TEST):
-        scores[t, m, 7] = -st.multivariate_normal(
+        scores[t, m, 8] = -st.multivariate_normal(
             mean=predictions_loc_ar[t],
             cov=predictions_cov_ar[t] if m == 1 else np.diag(predictions_cov_ar[t]),
         ).logpdf(y_numpy[N_TRAIN + t, :])
@@ -215,9 +218,11 @@ for h in range(H):
         y_numpy[N_TRAIN:, h], marginal_predictions[:, h, :]
     )
 
-for c, m in enumerate(range(2, 4)):
+scores[:, 2, 8] = -np.log(marginal_loglikelihood).sum(1)
+
+for c, m in enumerate(range(3, 5)):
     # Copula log score here!!
-    scores[:, m, 7] = -(
+    scores[:, m, 8] = -(
         gaussian_copula_log_likelihood(pred_uni_copula, pred_cov_copula[:, c])
         + np.log(marginal_loglikelihood).sum(1)
     )
@@ -227,10 +232,10 @@ predictions_loc_mv = file_multivariate["predictions_loc"]
 predictions_cov_mv = file_multivariate["predictions_cov"]
 predictions_dof_mv = file_multivariate["predictions_dof"]
 
-for m, idx in enumerate(range(4, 10)):
+for m, idx in enumerate(range(5, 11)):
     # MV GAMLSS Models here
     for t in range(N_TEST):
-        scores[t, idx, 7] = -st.multivariate_t(
+        scores[t, idx, 8] = -st.multivariate_t(
             loc=predictions_loc_mv[t, m],
             shape=predictions_cov_mv[t, m],
             df=predictions_dof_mv[t, m],
