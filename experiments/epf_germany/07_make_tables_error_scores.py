@@ -70,6 +70,10 @@ style.apply(
 style.to_latex("tables/scoringrules.tex", convert_css=True, hrules=True)
 
 
+with open("tables/scoringrules.html", "w") as f:
+    f.write(style.to_html())
+
+
 ### DIEBOLD MARIANO TEST
 
 dm_test = np.zeros((4, N_MODELS, N_MODELS))
