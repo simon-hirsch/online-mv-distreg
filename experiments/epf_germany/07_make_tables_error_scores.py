@@ -69,19 +69,8 @@ style.apply(
 
 style.to_latex("tables/scoringrules.tex", convert_css=True, hrules=True)
 
-# This ensures that mathjax in quarto will render the Tex Formula correctly
-mathjax_script = """
-<script type="text/javascript">
-  MathJax = {
-    tex: {
-      inlineMath: [['$', '$'], ['\\(', '\\)']]
-    }
-  };
-</script>
-"""
-
 with open("tables/scoringrules.html", "w") as f:
-    f.write(mathjax_script + style.to_html(escape=False))
+    f.write(style.to_html(escape=False))
 
 
 ### DIEBOLD MARIANO TEST

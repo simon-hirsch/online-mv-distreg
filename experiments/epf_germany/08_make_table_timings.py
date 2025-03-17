@@ -60,6 +60,9 @@ styled = (
 styled.to_latex(
     "tables/timings.tex", convert_css=True, hrules=True, column_format="lrrrrr"
 )
+with open("tables/timings.html", "w") as f:
+    f.write(styled.to_html(escape=True))
+
 
 plot_data = pd.DataFrame(index=MODELS)
 plot_data.index.name = "Model"
