@@ -1,6 +1,7 @@
 # Regularized Online Multivariate Distributional Regression
 
-This repo holds the experiments for the Paper "_Multivariate Regularized Online Distributional Regression for High-Dimensional Energy Forecasting_".
+This repo holds the experiments for the Paper _[Online Multivariate Regularized Distributional Regression for High-dimensional Probabilistic Electricity Price Forecasting
+(Link to Arxiv)](https://arxiv.org/abs/2504.02518)_.
 
 ## Requirements
 
