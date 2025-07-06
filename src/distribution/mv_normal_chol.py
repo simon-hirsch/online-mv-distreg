@@ -153,7 +153,9 @@ class MultivariateNormalInverseCholesky(Distribution):
     def element_hessian(self, y: np.ndarray, theta: Dict, param: int = 0, k: int = 0):
         return self.element_dl2_dp2(y=y, theta=theta, param=param, k=k)
 
-    def element_dl1_dp1(self, y: np.ndarray, theta: Dict, param: int = 0, k: int = 0, clip=False):
+    def element_dl1_dp1(
+        self, y: np.ndarray, theta: Dict, param: int = 0, k: int = 0, clip=False
+    ):
         fitted_loc, fitted_inv_tr_chol = self.theta_to_params(theta)
         d = y.shape[1]
         if param == 0:
@@ -173,7 +175,9 @@ class MultivariateNormalInverseCholesky(Distribution):
                 )
         return deriv
 
-    def element_dl2_dp2(self, y: np.ndarray, theta: Dict, param: int = 0, k: int = 0, clip=False):
+    def element_dl2_dp2(
+        self, y: np.ndarray, theta: Dict, param: int = 0, k: int = 0, clip=False
+    ):
         fitted_loc, fitted_inv_tr_chol = self.theta_to_params(theta)
         d = y.shape[1]
         if param == 0:
