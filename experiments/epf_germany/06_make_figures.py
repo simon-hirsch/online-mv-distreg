@@ -187,3 +187,32 @@ plt.savefig(
     bbox_inches="tight",
 )
 # plt.show()
+
+# Same for the IWSM short paper
+
+plt.rcParams.update({"text.usetex": True, "font.family": "CM"})
+
+n_plots = 4
+start = 112
+
+fig, axes = plt.subplots(1, n_plots, figsize=(20, 6), sharey=True)
+
+for i in range(n_plots):
+    if i == 0:
+        axes[i].set_ylabel("Delivery Hour")
+    im = axes[i].imshow(pred_cov[start + i], cmap="turbo")
+    axes[i].set_title(f"{df_X[IDX_TEST].index[start+i]}")
+    axes[i].set_xticks(np.arange(24, step=2))
+    axes[i].set_xticklabels(np.arange(24, step=2), rotation=90)
+    axes[i].set_yticks(np.arange(24, step=2))
+    axes[i].set_yticklabels(np.arange(24, step=2), rotation=0)
+    axes[i].set_xlabel("Delivery Hour")
+
+plt.tight_layout()
+fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.4)
+plt.savefig(
+    "figures/illustrative_covariance_matrices_iwsm.png",
+    dpi=300,
+    bbox_inches="tight",
+    backend="pgf",
+)
