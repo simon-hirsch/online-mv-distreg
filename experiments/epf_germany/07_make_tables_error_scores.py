@@ -1,3 +1,5 @@
+# %%
+
 from itertools import product
 
 import matplotlib.pyplot as plt
@@ -7,7 +9,7 @@ import scipy.stats as st
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
-scores = np.load(file="results/scores.npy")
+scores = np.load(file="experiments/epf_germany/results/scores.npy")
 # Normalize the Variogram Score
 scores[:, :, 4] = np.power(scores[:, :, 4] / 24**2, 0.5)
 scores[:, :, 5] = np.power(scores[:, :, 5] / 24**2, 0.5)
@@ -54,9 +56,14 @@ scores_chosen = [
     "DSS",
     "LS",
 ]
-style = (avg_scores.loc[:, ["Model"] + scores_chosen].style).background_gradient(
-    axis=0, subset=scores_chosen, cmap="turbo"
-)
+
+# %%
+
+style = avg_scores.loc[:, ["Model"] + scores_chosen].style
+for col in scores_chosen:
+    style = style.background_gradient(
+        subset=col, cmap="GnBu", gmap=np.log(avg_scores.loc[:, col].values)
+    )
 style.format(precision=3)
 style.apply(
     lambda x: [
@@ -67,11 +74,14 @@ style.apply(
     subset=scores_chosen,
 ).hide(axis="index")
 
-style.to_latex("tables/scoringrules.tex", convert_css=True, hrules=True)
+# style.to_latex("tables/scoringrules.tex", convert_css=True, hrules=True)
 
-with open("tables/scoringrules.html", "w") as f:
+with open("experiments/epf_germany/tables/scoringrules.html", "w") as f:
     f.write(style.to_html(escape=False))
 
+style
+
+# %%
 
 ### DIEBOLD MARIANO TEST
 
@@ -126,3 +136,5 @@ for i, ax in enumerate(axes.flatten()):
 plt.tight_layout()
 plt.savefig("figures/dm_matrix.png", dpi=300)
 plt.show()
+
+# %%
