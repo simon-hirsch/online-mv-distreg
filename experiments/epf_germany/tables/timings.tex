@@ -1,17 +1,22 @@
 \begin{tabular}{lrrrrr}
 \toprule
-Model & Initial Fit & Avg. Update & Std. Update & Total Time & Est. Speedup \\
+Model & Initial Fit & Avg. Update & Total Time & Est. Speedup \\
 \midrule
-LARX + N(0, $\sigma$) & 1.74 & 0.02 & 0.04 & 13.70 & $\times$93 \\
-LARX + N(0, $\Sigma$) & 1.74 & 0.02 & 0.04 & 13.70 & $\times$93 \\
-oDistReg & 25.08 & 0.12 & 0.07 & 114.26 & $\times$161 \\
-oDistReg+GC & 25.08 & 0.12 & 0.07 & 114.71 & $\times$160 \\
-oDistReg+spGC & 25.28 & 0.29 & 0.07 & 241.68 & $\times$76 \\
-oMvDistReg(t, CD, OLS, ind) & 46.44 & 0.09 & 0.07 & 113.68 & $\times$300 \\
-oMvDistReg(t, LRA, OLS, ind) & 55.32 & 0.11 & 0.03 & 132.70 & $\times$306 \\
-oMvDistReg(t, CD, OLS) & 146.94 & 0.31 & 0.01 & 377.33 & $\times$286 \\
-oMvDistReg(t, LRA, OLS) & 188.24 & 1.96 & 0.17 & 1628.10 & $\times$85 \\
-oMvDistReg(t, CD, LASSO) & 290.06 & 3.07 & 0.03 & 2549.02 & $\times$83 \\
-oMvDistReg(t, LRA, LASSO) & 864.99 & 0.68 & 0.04 & 1363.32 & $\times$466 \\
+LARX+N(0, $\sigma$) & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} 1.23 & {\cellcolor[HTML]{E2EDF8}} \color[HTML]{000000} 0.06 & {\cellcolor[HTML]{EEF5FC}} \color[HTML]{000000} 103.80 & {\cellcolor[HTML]{BDD7EC}} \color[HTML]{000000} $\times$ 21 \\
+LARX+N(0, $\Sigma$) & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} 1.23 & {\cellcolor[HTML]{E2EDF8}} \color[HTML]{000000} 0.06 & {\cellcolor[HTML]{EEF5FC}} \color[HTML]{000000} 103.80 & {\cellcolor[HTML]{BDD7EC}} \color[HTML]{000000} $\times$ 21 \\
+LARX+Adaptive CP & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} 1.23 & {\cellcolor[HTML]{E2EDF8}} \color[HTML]{000000} 0.06 & {\cellcolor[HTML]{EEF5FC}} \color[HTML]{000000} 103.80 & {\cellcolor[HTML]{BDD7EC}} \color[HTML]{000000} $\times$ 21 \\
+LARX+GARCH(1,1) & {\cellcolor[HTML]{F4F9FE}} \color[HTML]{000000} 1.44 & {\cellcolor[HTML]{82BBDB}} \color[HTML]{000000} 0.27 & {\cellcolor[HTML]{A4CCE3}} \color[HTML]{000000} 501.31 & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} $\times$ 5 \\
+oDistReg & {\cellcolor[HTML]{7FB9DA}} \color[HTML]{000000} 55.31 & {\cellcolor[HTML]{7AB6D9}} \color[HTML]{000000} 0.30 & {\cellcolor[HTML]{97C6DF}} \color[HTML]{000000} 598.78 & {\cellcolor[HTML]{3181BD}} \color[HTML]{F1F1F1} $\times$ 169 \\
+oDistReg+GC & {\cellcolor[HTML]{7FB9DA}} \color[HTML]{000000} 55.32 & {\cellcolor[HTML]{7AB6D9}} \color[HTML]{000000} 0.30 & {\cellcolor[HTML]{97C6DF}} \color[HTML]{000000} 599.61 & {\cellcolor[HTML]{3181BD}} \color[HTML]{F1F1F1} $\times$ 168 \\
+oDistReg+spGC & {\cellcolor[HTML]{7FB9DA}} \color[HTML]{000000} 55.46 & {\cellcolor[HTML]{5BA3D0}} \color[HTML]{F1F1F1} 0.45 & {\cellcolor[HTML]{79B5D9}} \color[HTML]{000000} 870.45 & {\cellcolor[HTML]{4594C7}} \color[HTML]{F1F1F1} $\times$ 116 \\
+oMvDistReg(t, CD, OLS, ind) & {\cellcolor[HTML]{91C3DE}} \color[HTML]{000000} 38.26 & {\cellcolor[HTML]{D6E6F4}} \color[HTML]{000000} 0.07 & {\cellcolor[HTML]{DAE8F6}} \color[HTML]{000000} 173.88 & {\cellcolor[HTML]{0B559F}} \color[HTML]{F1F1F1} $\times$ 402 \\
+oMvDistReg(t, CD, OLS) & {\cellcolor[HTML]{5CA4D0}} \color[HTML]{F1F1F1} 123.11 & {\cellcolor[HTML]{A3CCE3}} \color[HTML]{000000} 0.18 & {\cellcolor[HTML]{A9CFE5}} \color[HTML]{000000} 460.38 & {\cellcolor[HTML]{084B93}} \color[HTML]{F1F1F1} $\times$ 489 \\
+oMvDistReg(t, CD, LASSO) & {\cellcolor[HTML]{2E7EBC}} \color[HTML]{F1F1F1} 460.46 & {\cellcolor[HTML]{084A91}} \color[HTML]{F1F1F1} 2.34 & {\cellcolor[HTML]{1562A9}} \color[HTML]{F1F1F1} 4736.02 & {\cellcolor[HTML]{2F7FBC}} \color[HTML]{F1F1F1} $\times$ 178 \\
+oMvDistReg(t, MCD, OLS, ind) & {\cellcolor[HTML]{8DC1DD}} \color[HTML]{000000} 41.72 & {\cellcolor[HTML]{E0ECF8}} \color[HTML]{000000} 0.06 & {\cellcolor[HTML]{E1EDF8}} \color[HTML]{000000} 147.07 & {\cellcolor[HTML]{08488E}} \color[HTML]{F1F1F1} $\times$ 519 \\
+oMvDistReg(t, MCD, OLS) & {\cellcolor[HTML]{5AA2CF}} \color[HTML]{F1F1F1} 132.20 & {\cellcolor[HTML]{B2D2E8}} \color[HTML]{000000} 0.15 & {\cellcolor[HTML]{B2D2E8}} \color[HTML]{000000} 403.89 & {\cellcolor[HTML]{084184}} \color[HTML]{F1F1F1} $\times$ 599 \\
+oMvDistReg(t, MCD, LASSO) & {\cellcolor[HTML]{0E59A2}} \color[HTML]{F1F1F1} 1484.75 & {\cellcolor[HTML]{0E58A2}} \color[HTML]{F1F1F1} 1.79 & {\cellcolor[HTML]{1562A9}} \color[HTML]{F1F1F1} 4754.88 & {\cellcolor[HTML]{084387}} \color[HTML]{F1F1F1} $\times$ 571 \\
+oMvDistReg(t, LRA, OLS, ind) & {\cellcolor[HTML]{A9CFE5}} \color[HTML]{000000} 21.82 & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} 0.03 & {\cellcolor[HTML]{F7FBFF}} \color[HTML]{000000} 83.58 & {\cellcolor[HTML]{084C95}} \color[HTML]{F1F1F1} $\times$ 477 \\
+oMvDistReg(t, LRA, OLS) & {\cellcolor[HTML]{3C8CC3}} \color[HTML]{F1F1F1} 289.85 & {\cellcolor[HTML]{3787C0}} \color[HTML]{F1F1F1} 0.77 & {\cellcolor[HTML]{4997C9}} \color[HTML]{F1F1F1} 1702.47 & {\cellcolor[HTML]{1562A9}} \color[HTML]{F1F1F1} $\times$ 311 \\
+oMvDistReg(t, LRA, LASSO) & {\cellcolor[HTML]{08306B}} \color[HTML]{F1F1F1} 5654.00 & {\cellcolor[HTML]{08306B}} \color[HTML]{F1F1F1} 3.73 & {\cellcolor[HTML]{08306B}} \color[HTML]{F1F1F1} 12473.45 & {\cellcolor[HTML]{08306B}} \color[HTML]{F1F1F1} $\times$ 829 \\
 \bottomrule
 \end{tabular}
