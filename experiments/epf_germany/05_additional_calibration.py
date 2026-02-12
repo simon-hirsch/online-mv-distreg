@@ -91,7 +91,7 @@ MODEL_NAMES = np.concatenate(
 )
 MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
 
-LS_MAPPING = {"LARX": ":", "oDis": "--", "oMvD": "-"}
+LS_MAPPING = {"LEAR": ":", "ODR-": "--", "MODR": "-"}
 
 LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 
@@ -102,7 +102,7 @@ LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 # Helmut Lütkepohl, Anna Staszewska-Bystrova, Peter Winker
 # https://www.sciencedirect.com/science/article/abs/pii/S0169207013001398
 
-ALPHA = np.array([0.25, 0.2, 0.15, 0.1, 0.05])
+ALPHA = np.array([0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05])
 prediction_band = np.zeros((N_TEST, N_MODELS, 2, H, len(ALPHA)))
 
 
@@ -135,6 +135,18 @@ prediction_band_width = prediction_band[:, :, 1] - prediction_band[:, :, 0]
 miscoverage = prediction_band_cover.mean(0) - (1 - ALPHA)
 width_median = np.median(prediction_band_width, (0, 2))
 width_mean = np.mean(prediction_band_width, (0, 2))
+
+# %%
+# Save the results for the paper
+np.savez(
+    os.path.join(FOLDER_RESULTS, "prediction_band_calibration.npz"),
+    prediction_band=prediction_band,
+    miscoverage=miscoverage,
+    width_mean=width_mean,
+    width_median=width_median,
+    model_names=MODEL_NAMES,
+)
+
 
 # %%
 plt.figure(figsize=(8, 4))
@@ -179,8 +191,7 @@ plt.xlabel("Nominal Prediction Band Coverage Probability")
 plt.tight_layout()
 plt.title("Mean Prediction Band Width by Model")
 plt.legend(ncol=3, fontsize=10, loc="lower center", bbox_to_anchor=(0.5, -0.5))
-# %%
-
+plt.show()
 
 # %%
 fig, axes = plt.subplots(1, 2, figsize=(8, 4))
@@ -224,10 +235,10 @@ handles, labels = axes[1].get_legend_handles_labels()
 fig.legend(
     handles,
     labels,
-    ncol=3,
+    ncol=4,
     fontsize=10,
     loc="lower center",
-    bbox_to_anchor=(0.5, -0.15),
+    bbox_to_anchor=(0.5, -0.05),
 )
 plt.tight_layout()
 plt.subplots_adjust(bottom=0.3)
@@ -237,13 +248,6 @@ plt.savefig(
 plt.savefig(
     os.path.join(FOLDER_FIGURES, "calibration_prediction_bands.pdf"), **PLT_SAVE_OPTIONS
 )
-# %%
-np.savez(
-    os.path.join(FOLDER_RESULTS, "prediction_band_calibration.npz"),
-    prediction_band=prediction_band,
-    miscoverage=miscoverage,
-    width_mean=width_mean,
-    width_median=width_median,
-    model_names=MODEL_NAMES,
-)
+plt.show()
+
 # %%
