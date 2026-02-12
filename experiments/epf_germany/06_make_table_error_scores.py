@@ -21,6 +21,7 @@ from const_and_helper import (  # MODEL_NAMES_MAPPING,
     FOLDER_FIGURES,
     FOLDER_RESULTS,
     FOLDER_TABLES,
+    LS_MAPPING,
     MODEL_NAMES_MAPPING,
     PLT_SAVE_OPTIONS,
     PLT_TEX_OPTIONS,
@@ -149,28 +150,28 @@ ls_dataframe = pd.DataFrame(
     columns=MODEL_NAMES_NICE,
 )
 
-skill_scores = 1 - ls_dataframe.div(ls_dataframe["oDistReg+GC"], axis=0)
+skill_scores = 1 - ls_dataframe.div(ls_dataframe["LEAR-N(0, $\Sigma$)"], axis=0)
 
-yp_min = -0.5
-yp_max = 0.1
+yp_min = -0.4
+yp_max = 0.2
 ys_min = -100
 ys_max = 800
 y_steps = 7
-line_styles = [":", "--", "-."] * 3
+line_styles = [":", "--", "-."] * 4
 
 ax = (
     skill_scores.filter(
-        regex="MvDistReg",
+        regex="ODR",
     )
-    .rolling(182, min_periods=7)
+    .rolling(182, min_periods=182)
     .mean()
-    .plot(cmap="turbo", figsize=(8, 4), lw=2, legend=False)
+    .plot(cmap="turbo", figsize=(10, 4), lw=2, legend=False)
 )
 for line, ls in zip(ax.get_lines(), line_styles):
     line.set_linestyle(ls)
 plt.ylim(yp_min, yp_max)
 plt.yticks(np.linspace(yp_min, yp_max, y_steps))
-plt.ylabel("Skill Score (Log-Score relative to oDis+GC)")
+plt.ylabel("Skill Score (Log-Score relative to LEAR-N(0,$\Sigma$))")
 prices.loc[skill_scores.index].mean(axis=1).plot(
     secondary_y=True,
     ax=plt.gca(),
@@ -197,9 +198,10 @@ plt.legend(
     unique.values(),
     unique.keys(),
     loc="lower center",
-    ncol=3,
+    ncol=4,
     bbox_to_anchor=(0.5, -0.4),
 )
+plt.axvline(x=181, color="black", ls=":", lw=1)
 
 
 plt.savefig(
@@ -221,7 +223,7 @@ plt.bar(
 )
 plt.gca().set_axisbelow(True)
 plt.grid(axis="y", ls=":")
-plt.ylim(-0.2, 0.05)
+plt.ylim(-0.2, 0.1)
 plt.xticks(rotation=90)
 plt.show(block=False)
 
@@ -230,7 +232,7 @@ plt.show(block=False)
 
 # %%
 # Create plots for RMSE and MAE by Hour
-LS_MAPPING = {"LARX": ":", "oDis": "--", "oMvD": "-"}
+
 LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 
 error_mean = file["error_mean"]
