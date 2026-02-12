@@ -44,6 +44,8 @@ MODEL_NAMES_MAPPING = {
     "lr_lasso_dep": "MODR-LASSO-LRA-$\Sigma$",
 }
 
+LS_MAPPING = {"LEAR": ":", "ODR-": "--", "MODR": "-"}
+
 
 def boxcox(y: np.ndarray, power: float = 0.5, shift: float = 1.0):
     return np.sign(y) * (((np.abs(y) + shift) ** power - shift) / power)
