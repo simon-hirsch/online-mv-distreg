@@ -306,31 +306,41 @@ error_crps = file["error_crps"].mean(-1)
 error_ls = file["ls"]
 prediction_band_cover = file["prediction_band_cover"]
 
+# %%
+error_es = file["es"]
+error_dss = file["dss"]
+error_vs = file["vs10"]
+
+# %%
 spreads = prices_test.max(1) - prices_test.min(1)
 mask_spread = np.where(spreads > np.quantile(spreads, 0.9))[0]
 mask_spikes_h = np.where(prices_test.max(1) > np.quantile(prices_test.max(1), 0.95))[0]
 mask_spikes_l = np.where(prices_test.min(1) < np.quantile(prices_test.min(1), 0.05))[0]
 mask_spike = np.unique(np.stack((mask_spikes_h, mask_spikes_l)))
 
-spike_analysis = pd.DataFrame(index=MODEL_NAMES)
-spike_analysis[("CRPS", "Spread", "Low")] = error_crps[~mask_spread].mean(0)
-spike_analysis[("CRPS", "Spread", "High")] = error_crps[mask_spread].mean(0)
-spike_analysis[("CRPS", "Spike", "Low")] = error_crps[~mask_spike].mean(0)
-spike_analysis[("CRPS", "Spike", "High")] = error_crps[mask_spike].mean(0)
+mask_no_spread = np.setdiff1d(np.arange(len(prices_test)), mask_spread)
+mask_no_spike = np.setdiff1d(np.arange(len(prices_test)), mask_spike)
 
-spike_analysis[("LS", "Spread", "Low")] = error_ls[~mask_spread].mean(0)
-spike_analysis[("LS", "Spread", "High")] = error_ls[mask_spread].mean(0)
-spike_analysis[("LS", "Spike", "Low")] = error_ls[~mask_spike].mean(0)
-spike_analysis[("LS", "Spike", "High")] = error_ls[mask_spike].mean(0)
+spike_analysis = pd.DataFrame(index=MODEL_NAMES)
+
+for c, s in zip(
+    ["CRPS", "LS", "$\\text{MC}_{0.95}$", "ES", "DSS", "VS"],
+    [error_crps, error_ls, prediction_band_cover, error_es, error_dss, error_vs],
+):
+    spike_analysis[(c, "Spread", "Low")] = s[mask_no_spread].mean(0)
+    spike_analysis[(c, "Spread", "High")] = s[mask_spread].mean(0)
+    spike_analysis[(c, "Spike", "Low")] = s[mask_no_spike].mean(0)
+    spike_analysis[(c, "Spike", "High")] = s[mask_spike].mean(0)
+
 
 spike_analysis[("$\\text{MC}_{0.95}$", "Spread", "Low")] = prediction_band_cover[
-    ~mask_spread
+    mask_no_spread
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spread", "High")] = prediction_band_cover[
     mask_spread
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spike", "Low")] = prediction_band_cover[
-    ~mask_spike
+    mask_no_spike
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spike", "High")] = prediction_band_cover[
     mask_spike
@@ -355,23 +365,27 @@ spike_analysis_str = spike_analysis_str.rename(index=MODEL_NAMES_MAPPING)
 # Maybe we can make the background gradient based on
 # the change in the models ranking?
 # TODO: Need to add the model names
-style = spike_analysis_str.style
-for col in spike_analysis.columns:
-    style.background_gradient(
-        gmap=np.log(spike_analysis_gmap[col].values),
-        axis=0,
-        subset=[col],
-        cmap=CMAP_TABLES,
+
+for tab, cols in zip(
+    ["main", "app"],
+    [["CRPS", "LS", "$\\text{MC}_{0.95}$"], ["ES", "DSS", "VS"]],
+):
+    style = spike_analysis_str.loc[:, cols].style
+    for col in spike_analysis_str.loc[:, cols].columns:
+        style.background_gradient(
+            gmap=np.log(spike_analysis_gmap[col].values),
+            axis=0,
+            subset=[col],
+            cmap=CMAP_TABLES,
+        )
+    style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    style.to_latex(
+        f"experiments/epf_germany/tables/spike_analysis_{tab}.tex",
+        hrules=True,
+        convert_css=True,
+        multicol_align="c",
+        column_format="l" + "r" * spike_analysis_rank.shape[1],
     )
-# %%
-style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-style.to_latex(
-    "experiments/epf_germany/tables/spike_analysis.tex",
-    hrules=True,
-    convert_css=True,
-    multicol_align="c",
-    column_format="l" + "r" * spike_analysis_rank.shape[1],
-)
 
 # %%
 ### DIEBOLD MARIANO TEST
