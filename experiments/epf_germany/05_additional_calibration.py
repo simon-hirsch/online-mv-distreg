@@ -90,11 +90,9 @@ MODEL_NAMES = np.concatenate(
     )
 )
 MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
-
 LS_MAPPING = {"LEAR": ":", "ODR-": "--", "MODR": "-"}
-
 LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
-
+ALPHA = np.array([0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05])
 
 # %%
 # Prediction Bands
@@ -102,7 +100,7 @@ LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 # Helmut Lütkepohl, Anna Staszewska-Bystrova, Peter Winker
 # https://www.sciencedirect.com/science/article/abs/pii/S0169207013001398
 
-ALPHA = np.array([0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05])
+
 prediction_band = np.zeros((N_TEST, N_MODELS, 2, H, len(ALPHA)))
 
 
@@ -147,53 +145,25 @@ np.savez(
     model_names=MODEL_NAMES,
 )
 
-
 # %%
-plt.figure(figsize=(8, 4))
-plt.gca().set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
-for m, model in enumerate(MODEL_NAMES):
-    if not "ar_cp" in model:
-        plt.plot(
-            1 - ALPHA,
-            miscoverage[m, :],
-            ls=LS[m],
-            label=MODEL_NAMES_NICE[m],
-            marker="o",
-        )
-
-plt.xticks(1 - ALPHA)
-plt.axhline(0, color="red")
-plt.ylim(-0.2, 0.2)
-plt.grid(ls=":")
-plt.xlabel("Nominal Prediction Band Coverage Probability")
-plt.tight_layout()
-plt.ylabel("Miscoverage")
-plt.title("Prediction Band Miscoverage by Model")
-plt.legend(ncol=3, fontsize=10, loc="lower center", bbox_to_anchor=(0.5, -0.5))
+with np.load(os.path.join(FOLDER_RESULTS, "prediction_band_calibration.npz")) as file:
+    prediction_band = file["prediction_band"]
+    miscoverage = file["miscoverage"]
+    width_mean = file["width_mean"]
+    width_median = file["width_median"]
+    MODEL_NAMES = file["model_names"]
 
 
 # %%
-plt.figure(figsize=(8, 4))
-plt.gca().set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
-for m, model in enumerate(MODEL_NAMES):
-    if not "ar_cp" in model:
-        plt.plot(
-            1 - ALPHA,
-            width_mean[m, :],
-            ls=LS[m],
-            label=MODEL_NAMES_NICE[m],
-            marker="o",
-        )
-plt.xticks(1 - ALPHA)
-plt.grid(ls=":")
-plt.ylabel("Average Prediction Band Width")
-plt.xlabel("Nominal Prediction Band Coverage Probability")
-plt.tight_layout()
-plt.title("Mean Prediction Band Width by Model")
-plt.legend(ncol=3, fontsize=10, loc="lower center", bbox_to_anchor=(0.5, -0.5))
-plt.show()
+N_MODELS = len(MODEL_NAMES)
+MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
+LS_MAPPING = {"LEAR": ":", "ODR-": "--", "MODR": "-"}
+LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
+ALPHA = np.array([0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05])
+
 
 # %%
+# Plot the miscoverage and width of the prediction bands
 fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 axes[0].set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
 for m, model in enumerate(MODEL_NAMES):
@@ -250,4 +220,141 @@ plt.savefig(
 )
 plt.show()
 
+# %%
+# Analyze the coverage during spikes vs non-spikes
+# We define spikes as the 5% highest and lowest prices and spreads as the 10% highest spreads
+prices_test = prices_numpy[IDX_TEST, :]
+spreads = prices_test.max(1) - prices_test.min(1)
+mask_spread = np.where(spreads > np.quantile(spreads, 0.9))[0]
+mask_spikes_h = np.where(prices_test.max(1) > np.quantile(prices_test.max(1), 0.95))[0]
+mask_spikes_l = np.where(prices_test.min(1) < np.quantile(prices_test.min(1), 0.05))[0]
+mask_spike = np.unique(np.stack((mask_spikes_h, mask_spikes_l)))
+
+# %%
+cover_upper = (prediction_band[:, :, 1, :] >= prices_test[:, None, :, None]).all(-2)
+cover_lower = (prediction_band[:, :, 0, :] <= prices_test[:, None, :, None]).all(-2)
+prediction_band_cover = np.logical_and(cover_upper, cover_lower)
+prediction_band_width = prediction_band[:, :, 1] - prediction_band[:, :, 0]
+
+mask_no_spike = np.setdiff1d(np.arange(N_TEST), mask_spike)
+mask_no_spread = np.setdiff1d(np.arange(N_TEST), mask_spread)
+
+
+# %%
+# Spike vs non-spike coverage comparison
+fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharex=True, sharey=True)
+axes[0].set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
+for m, model in enumerate(MODEL_NAMES):
+    if model not in "ar_cp":
+        axes[0].plot(
+            1 - ALPHA,
+            prediction_band_cover[mask_no_spike, m].mean(0) - (1 - ALPHA),
+            ls=LS[m],
+            label=MODEL_NAMES_NICE[m],
+            marker="o",
+        )
+axes[0].set_xticks(1 - ALPHA)
+axes[0].axhline(0, color="red")
+
+axes[0].grid(ls=":")
+axes[0].set_xlabel("Nominal Prediction Band Coverage")
+axes[0].set_ylabel("Miscoverage")
+axes[0].set_title(f"Miscoverage during non-spikes  (N={len(mask_no_spike)})")
+
+axes[1].set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
+for m, model in enumerate(MODEL_NAMES):
+    if model not in "ar_cp":
+        axes[1].plot(
+            1 - ALPHA,
+            prediction_band_cover[mask_spike, m].mean(0) - (1 - ALPHA),
+            ls=LS[m],
+            label=MODEL_NAMES_NICE[m],
+            marker="o",
+        )
+axes[1].set_xticks(1 - ALPHA)
+axes[1].axhline(0, color="red")
+# axes[1].set_ylim(-0.4, 0.4)
+axes[1].grid(ls=":")
+axes[1].set_xlabel("Nominal Prediction Band Coverage")
+axes[1].set_ylabel("Miscoverage")
+axes[1].set_title(f"Miscoverage during spikes (N={len(mask_spike)})")
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    ncol=4,
+    fontsize=10,
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.05),
+)
+plt.tight_layout()
+plt.subplots_adjust(bottom=0.3)
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "calibration_comparison_spikes.png"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "calibration_comparison_spikes.pdf"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.show()
+
+
+# %%
+# Coverage during spread vs non-spread
+fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharex=True, sharey=True)
+axes[0].set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
+for m, model in enumerate(MODEL_NAMES):
+    if model not in "ar_cp":
+        axes[0].plot(
+            1 - ALPHA,
+            prediction_band_cover[mask_no_spread, m].mean(0) - (1 - ALPHA),
+            ls=LS[m],
+            label=MODEL_NAMES_NICE[m],
+            marker="o",
+        )
+axes[0].set_xticks(1 - ALPHA)
+axes[0].axhline(0, color="red")
+axes[0].grid(ls=":")
+axes[0].set_xlabel("Nominal Prediction Band Coverage")
+axes[0].set_ylabel("Miscoverage")
+axes[0].set_title(f"Miscoverage during normal spreads (N={len(mask_no_spread)})")
+axes[1].set_prop_cycle(plt.cycler(color=plt.cm.turbo(np.linspace(0, 1, N_MODELS))))
+
+for m, model in enumerate(MODEL_NAMES):
+    if model not in "ar_cp":
+        axes[1].plot(
+            1 - ALPHA,
+            prediction_band_cover[mask_spread, m].mean(0) - (1 - ALPHA),
+            ls=LS[m],
+            label=MODEL_NAMES_NICE[m],
+            marker="o",
+        )
+axes[1].set_xticks(1 - ALPHA)
+axes[1].axhline(0, color="red")
+axes[1].grid(ls=":")
+axes[1].set_xlabel("Nominal Prediction Band Coverage")
+axes[1].set_title(f"Miscoverage during high spreads (N={len(mask_spread)})")
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    ncol=4,
+    fontsize=10,
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.05),
+)
+plt.tight_layout()
+plt.subplots_adjust(bottom=0.3)
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "calibration_comparison_spreads.png"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "calibration_comparison_spreads.pdf"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.show()
 # %%
