@@ -28,14 +28,14 @@ from const_and_helper import (  # MODEL_NAMES_MAPPING,
 )
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from statsmodels.tsa.stattools import adfuller
 
 plt.rcParams.update(PLT_TEX_OPTIONS)
 
 
 # CMAP_TABLES = sns.color_palette("coolwarm", as_cmap=True)
-CMAP_TABLES = LinearSegmentedColormap.from_list(
-    "table_cmap", ["teal", "gainsboro", "indianred"]
-)
+
+CMAP_TABLES = sns.color_palette("RdBu_r", as_cmap=True)
 CMAP_TABLES.set_bad(color="white", alpha=0)
 
 
@@ -401,6 +401,7 @@ FULL_SCORE_NAMES = [
     "Log-Score",
 ]
 
+
 scores = np.stack((file["vs10"], file["es"], file["dss"], file["ls"]), axis=-1)
 for i, s in enumerate(FULL_SCORE_NAMES):
     for m1, m2 in product(range(N_MODELS), range(N_MODELS)):
@@ -415,7 +416,7 @@ for i, s in enumerate(FULL_SCORE_NAMES):
             # Skip ADF Test for CP because CP has NANs for the
             # multivariate Loss functions
             if not np.any(np.isnan(loss_differential)):
-                adf_test[i, m1, m2] = sm_tools.adfuller(
+                adf_test[i, m1, m2] = adfuller(
                     loss_differential,
                 )[1]
         if m1 == m2:
@@ -482,5 +483,3 @@ plt.show(block=False)
 for i in range(scores.shape[2]):
     sns.heatmap((np.round(adf_test, 2))[i], annot=True, cmap="coolwarm", center=0)
     plt.show(block=False)
-
-# %%
