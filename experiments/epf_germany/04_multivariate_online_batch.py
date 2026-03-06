@@ -418,16 +418,16 @@ np.savez(
 )
 # %%
 # Load the results
-# file = np.load(os.path.join(FOLDER_RESULTS, "efficient_frontier_comp_time_short.npz"))
-# timings = file["timings"]
-# logscores = file["logscores"]
-# predictions_loc = file["predictions_loc"]
-# predictions_cov = file["predictions_cov"]
-# predictions_dof = file["predictions_dof"]
+file = np.load(os.path.join(FOLDER_RESULTS, "efficient_frontier_comp_time_short.npz"))
+timings = file["timings"]
+logscores = file["logscores"]
+predictions_loc = file["predictions_loc"]
+predictions_cov = file["predictions_cov"]
+predictions_dof = file["predictions_dof"]
 
-# UPDATE_FREQS = file["update_freqs"]
-# UPDATE_FREQS_BATCH = file["update_freqs_batch"]
-# UPDATE_FREQS_ONLINE = file["update_freqs_online"]
+UPDATE_FREQS = file["update_freqs"]
+UPDATE_FREQS_BATCH = file["update_freqs_batch"]
+UPDATE_FREQS_ONLINE = file["update_freqs_online"]
 
 # %%
 # Plot the results
@@ -546,56 +546,6 @@ plt.legend(
     # bbox_to_anchor=(0.5, -0.15),
 )
 plt.title("Efficient Frontier: Computation Time vs. Log-Score")
-
-# Add a zoomed inset for the x-range of the online models
-# ax_main = plt.gca()
-# axins = inset_axes(ax_main, width="60%", height="40%", loc="upper right", borderpad=2)
-
-# # Plot the same scatter points in the inset
-# axins.scatter(
-#     timings[:, :MO].sum(0),
-#     logscores[:, :MO].mean(0),
-#     color=COLORS,
-#     zorder=2,
-# )
-# # Plot the efficient frontier lines in the inset
-# axins.plot(
-#     timings[:, :MO].sum(0),
-#     logscores[:, :MO].mean(0),
-#     color=COLORS[0],
-#     linestyle="--",
-#     zorder=1,
-# )
-# axins.set_xlim(125, 275)
-# axins.set_ylim(55, 56.5)
-# axins.grid(which="both", linestyle=":")
-# axins.set_xticks(np.arange(125, 276, 25))
-# axins.set_yticks(np.arange(55, 56.51, 0.5))
-# axins.set_title("Zoom: Online Efficient Frontier", fontsize=10)
-# axins.set_facecolor("gainsboro")
-
-# for i, freq in enumerate(UPDATE_FREQS_ONLINE):
-#     axins.text(
-#         timings.sum(0)[i] - 20,
-#         logscores.mean(0)[i] - 0.25 * ,
-#         str(freq),
-#         fontsize=9,
-#         ha="left",
-#         va="bottom",
-#     )
-
-# mark_inset(
-#     ax_main,
-#     axins,
-#     loc1=2,
-#     loc2=4,
-#     ec="gainsboro",
-#     fill=True,
-#     color="gainsboro",
-#     zorder=-2
-# )
-
-
 plt.tight_layout()
 plt.savefig(
     os.path.join(FOLDER_FIGURES, "eff_frontier.png"),
@@ -603,6 +553,125 @@ plt.savefig(
 )
 plt.savefig(
     os.path.join(FOLDER_FIGURES, "eff_frontier.pdf"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.show(block=False)
+
+# %%
+rmse = np.mean((predictions_loc - prices_test[:736, None, :]) ** 2, axis=(0, 2)) ** 0.5
+
+plt.figure(figsize=(7, 4))
+# Initial fit training time
+plt.axvline(
+    x=base_model_train_time,
+    color="red",
+    alpha=0.75,
+    linestyle=":",
+    lw=1.5,
+    label="Initial fit training time",
+)
+# Scatter plot for timings and log-scores
+# Online
+plt.scatter(
+    timings[:, :MO].sum(0),
+    rmse[:MO],
+    color=COLORS,
+    zorder=2,
+)
+# Batch Increasing Window
+plt.scatter(
+    timings[:, MO : (MO + MB)].sum(0),
+    rmse[MO : (MO + MB)],
+    color=COLORS[(len(UPDATE_FREQS_ONLINE) - len(UPDATE_FREQS_BATCH)) :],
+    marker="s",
+    zorder=2,
+)
+plt.scatter(
+    timings[:, (MO + MB) :].sum(0),
+    rmse[(MO + MB) :],
+    color=COLORS[(len(UPDATE_FREQS_ONLINE) - len(UPDATE_FREQS_BATCH)) :],
+    marker="d",
+    zorder=2,
+)
+
+# Plot the efficient frontier lines
+plt.plot(
+    timings[:, :MO].sum(0),
+    rmse[:MO],
+    color=COLORS[0],
+    linestyle="--",
+    zorder=1,
+)
+plt.plot(
+    timings[:, MO : (MO + MB)].sum(0),
+    rmse[MO : (MO + MB)],
+    color=COLORS[-1],
+    linestyle="--",
+    zorder=1,
+)
+plt.plot(
+    timings[:, (MO + MB) :].sum(0),
+    rmse[(MO + MB) :],
+    color=COLORS[len(COLORS) // 2],
+    linestyle="--",
+    zorder=1,
+)
+
+for i, freq in enumerate(UPDATE_FREQS):
+    plt.text(
+        timings.sum(0)[i] + 10 if i >= MO else timings.sum(0)[i] - 10,
+        rmse[i] + 0.0 if i >= MO else rmse[i] - 0.01,
+        str(freq),
+        fontsize=9,
+        ha="left" if i >= MO else "right",
+        va="bottom" if i >= MO else "top",
+    )
+
+sm = mpl.cm.ScalarMappable(cmap=CMAP, norm=plt.Normalize(vmin=1, vmax=365))
+ax = plt.gca()
+cbar = plt.colorbar(sm, orientation="vertical", pad=0.02, ax=ax)
+cbar.set_label("Update Frequency (days)")
+cbar.set_ticks(np.linspace(1, 365, len(UPDATE_FREQS_ONLINE)))
+cbar.set_ticklabels(UPDATE_FREQS_ONLINE)
+
+plt.ylabel("Average RMSE")
+plt.xlabel("Computation Time (seconds, log-scale)")
+plt.xscale("log", base=2)
+plt.xlim(-1000)
+plt.grid(which="both", linestyle=":")
+
+labels = ["Online Learning", "Batch (Expanding window)", "Batch (Rolling window)"]
+colors = [COLORS[0], COLORS[-1], COLORS[len(COLORS) // 2]]
+markers = ["o", "s", "d"]
+
+legend_elements = [
+    Line2D(
+        [0],
+        [0],
+        marker=m,
+        color=c,
+        label=la,
+        markeredgecolor="gainsboro",
+        markerfacecolor="gainsboro",
+        markersize=8,
+    )
+    for la, c, m in zip(labels, colors, markers)
+]
+
+plt.legend(
+    handles=legend_elements + plt.gca().get_legend_handles_labels()[0],
+    ncol=1,
+    loc="upper right",
+    # bbox_to_anchor=(0.5, -0.15),
+)
+plt.title("Efficient Frontier: Computation Time vs. RMSE")
+plt.tight_layout()
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "eff_frontier_rmse.png"),
+    **PLT_SAVE_OPTIONS,
+)
+plt.savefig(
+    os.path.join(FOLDER_FIGURES, "eff_frontier_rmse.pdf"),
     **PLT_SAVE_OPTIONS,
 )
 plt.show(block=False)
