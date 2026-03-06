@@ -113,7 +113,7 @@ for subset_name, MASK in subsets.items():
         gmap = gmap.clip(lower=0, upper=THRESHOLD)
 
         styled = styled.background_gradient(
-            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 1)
+            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 0.01)
         )
         styled = styled.apply(
             lambda x, gmap=gmap: [
@@ -128,6 +128,7 @@ for subset_name, MASK in subsets.items():
         )
         styled = styled.format(partial(format_func, threshold=THRESHOLD))
     styled = styled.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    styled
 
     # Save the styled DataFrame to HTML
     # For nice display in presentations
