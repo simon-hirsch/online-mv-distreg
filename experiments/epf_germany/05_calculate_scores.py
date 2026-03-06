@@ -19,6 +19,7 @@ from const_and_helper import (
     FOLDER_DATA,
     FOLDER_FIGURES,
     FOLDER_RESULTS,
+    LS_MAPPING,
     MODEL_NAMES_MAPPING,
     PLT_SAVE_OPTIONS,
     PLT_TEX_OPTIONS,
@@ -89,9 +90,6 @@ MODEL_NAMES = np.concatenate(
     )
 )
 MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
-
-LS_MAPPING = {"LARX": ":", "oDis": "--", "oMvD": "-"}
-
 LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 
 
