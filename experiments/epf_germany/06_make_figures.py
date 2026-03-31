@@ -106,14 +106,12 @@ summary.to_latex(
 # %%
 fig = plt.figure(figsize=(12, 5), dpi=300)
 gs = GridSpec(1, 2, width_ratios=[4, 2], figure=fig)
-
 legend_step = 30
-
 # First plot (time series by hour)
 ax0 = fig.add_subplot(gs[1])
 ax0.set_xlim(0, 23)
 ax0.set_ylim(-100, 250)
-data.iloc[DAY_START:DAY_END, :].T.plot(ax=ax0, cmap="turbo", marker="o")
+data.iloc[DAY_START:DAY_END, :].T.plot(ax=ax0, cmap="viridis", lw=1)
 handles, labels = ax0.get_legend_handles_labels()
 labels = data.index[DAY_START:DAY_END].date
 ax0.grid()
@@ -127,7 +125,7 @@ ax0.set_facecolor("gainsboro")
 
 # Second plot (full time series)
 ax1 = fig.add_subplot(gs[0])
-data.plot(cmap="turbo", legend=None, ax=ax1)
+data.plot(cmap="turbo", legend=None, ax=ax1, lw=0.5)
 ax1.set_ylim(-200, 1000)
 ax1.set_xlim(df_y.index.min(), df_y.index.max())
 ax1.axvline(df_y.index[N_TRAIN], color="black", ls=":")
@@ -148,6 +146,88 @@ plt.savefig(
     **PLT_SAVE_OPTIONS,
 )
 plt.show(block=False)
+
+# %%
+# Get raw prices
+raw = pd.read_csv(
+    os.path.join(FOLDER_DATA, "de_prices_long.csv"), index_col=0, parse_dates=True
+)
+
+import matplotlib.dates as mdates
+from matplotlib.ticker import NullLocator
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+N_DAYS = 90
+DAY_START = 724
+DAY_END = DAY_START + N_DAYS
+
+START_DATE = data.index[DAY_START].date()
+END_DATE = data.index[DAY_END].date()
+
+fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
+ax.plot(raw["Price"], lw=0.5, color=plt.get_cmap("plasma").get_under())
+ax.set_ylabel("Price [EUR/MWh]")
+ax.set_xlim(raw.index.min(), raw.index.max())
+ax.grid()
+# ax.set_title("Electricity Price Time Series")
+ax.axvspan(START_DATE, END_DATE, color="gainsboro")
+ax.set_ylim(-200, 1000)
+ax.set_xlabel("Date")
+
+plt.tight_layout()
+
+gs = GridSpec(
+    1,
+    2,
+    left=0.15,
+    right=0.7,
+    top=0.9,
+    bottom=0.5,
+    width_ratios=[4, 2],
+    figure=fig,
+)
+legend_step = N_DAYS // 2 - 1
+
+ax0 = fig.add_subplot(gs[1])
+ax0.set_xlim(0, 23)
+ax0.set_ylim(-50, 200)
+data.iloc[DAY_START:DAY_END, :].T.plot(ax=ax0, cmap="plasma", lw=1)
+handles, labels = ax0.get_legend_handles_labels()
+labels = data.index[DAY_START:DAY_END].date
+ax0.set_xlabel("Delivery Hour")
+ax0.set_xticks(np.arange(0, 24, step=4))
+ax0.set_xticklabels(np.arange(0, 24, step=4), rotation=90)
+ax0.legend(handles[::legend_step], labels[::legend_step], ncol=1, loc="upper center")
+ax0.set_title("One series per delivery day")
+ax0.set_facecolor("gainsboro")
+
+ax1 = fig.add_subplot(gs[0], sharey=ax0)
+data.iloc[DAY_START:DAY_END, :].plot(cmap="plasma", legend=None, ax=ax1, lw=0.5)
+ax1.set_ylim(-50, 200)
+ax1.set_xlim(START_DATE, END_DATE)
+ax1.set_ylabel("Price [EUR/MWh]")
+handles, labels = ax1.get_legend_handles_labels()
+ax1.legend(handles[::4], labels[::4], ncol=3)
+ax1.set_title("One time series per delivery hour")
+ax1.set_facecolor("gainsboro")
+ax1.set_xlim(START_DATE, END_DATE)
+
+ax1.tick_params(axis="x", which="minor", bottom=False)
+ax1.xaxis.set_minor_locator(NullLocator())
+ax1.xaxis.set_major_locator(mdates.MonthLocator())
+ax1.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+
+plt.tight_layout()
+plt.savefig(
+    "experiments/epf_germany/figures/price_time_series_fig_in_fig.png",
+    **PLT_SAVE_OPTIONS,
+)
+plt.savefig(
+    "experiments/epf_germany/figures/price_time_series_fig_in_fig.pdf",
+    **PLT_SAVE_OPTIONS,
+)
+plt.show(block=False)
+plt.tight_layout()
 
 
 # %%

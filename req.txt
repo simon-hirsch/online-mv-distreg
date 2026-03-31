@@ -2,9 +2,9 @@ numpy<=2.1
 numba
 pandas
 scipy
-ondil==0.4.3
+ondil==0.4.7
 scikit-learn
-scoringrules
+scoringrules==0.8.0
 matplotlib
 seaborn
 tqdm

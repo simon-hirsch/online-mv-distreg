@@ -26,23 +26,25 @@ FOLDER_TABLES = "experiments/epf_germany/tables/"
 
 
 MODEL_NAMES_MAPPING = {
-    "ar_ind": "LARX+N(0, $\sigma$)",
-    "ar_dep": "LARX+N(0, $\Sigma$)",
-    "ar_cp": "LARX+Adaptive CP",
-    "ar_garch": "LARX+GARCH(1,1)",
-    "no_copula": "oDistReg",
-    "gaussian_copula": "oDistReg+GC",
-    "sparse_gaussian_copula": "oDistReg+spGC",
-    "cd_ols_ind": "oMvDistReg(t, CD, OLS, ind)",
-    "cd_ols_dep": "oMvDistReg(t, CD, OLS)",
-    "cd_lasso_dep": "oMvDistReg(t, CD, LASSO)",
-    "mcd_ols_ind": "oMvDistReg(t, MCD, OLS, ind)",
-    "mcd_ols_dep": "oMvDistReg(t, MCD, OLS)",
-    "mcd_lasso_dep": "oMvDistReg(t, MCD, LASSO)",
-    "lr_ols_ind": "oMvDistReg(t, LRA, OLS, ind)",
-    "lr_ols_dep": "oMvDistReg(t, LRA, OLS)",
-    "lr_lasso_dep": "oMvDistReg(t, LRA, LASSO)",
+    "ar_ind": "LEAR-N(0, $\sigma$)",
+    "ar_dep": "LEAR-N(0, $\Sigma$)",
+    "ar_cp": "LEAR-CP",
+    "ar_garch": "LEAR-GARCH",
+    "no_copula": "ODR-IND",
+    "gaussian_copula": "ODR-GC",
+    "sparse_gaussian_copula": "ODR-SPGC",
+    "cd_ols_ind": "MODR-OLS-CD-IND",
+    "cd_ols_dep": "MODR-OLS-CD-$\Sigma$",
+    "cd_lasso_dep": "MODR-LASSO-CD-$\Sigma$",
+    "mcd_ols_ind": "MODR-OLS-MCD-IND",
+    "mcd_ols_dep": "MODR-OLS-MCD-$\Sigma$",
+    "mcd_lasso_dep": "MODR-LASSO-MCD-$\Sigma$",
+    "lr_ols_ind": "MODR-OLS-LRA-IND",
+    "lr_ols_dep": "MODR-OLS-LRA-$\Sigma$",
+    "lr_lasso_dep": "MODR-LASSO-LRA-$\Sigma$",
 }
+
+LS_MAPPING = {"LEAR": ":", "ODR-": "--", "MODR": "-"}
 
 
 def boxcox(y: np.ndarray, power: float = 0.5, shift: float = 1.0):

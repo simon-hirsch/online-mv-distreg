@@ -21,20 +21,21 @@ from const_and_helper import (  # MODEL_NAMES_MAPPING,
     FOLDER_FIGURES,
     FOLDER_RESULTS,
     FOLDER_TABLES,
+    LS_MAPPING,
     MODEL_NAMES_MAPPING,
     PLT_SAVE_OPTIONS,
     PLT_TEX_OPTIONS,
 )
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from statsmodels.tsa.stattools import adfuller
 
 plt.rcParams.update(PLT_TEX_OPTIONS)
 
 
 # CMAP_TABLES = sns.color_palette("coolwarm", as_cmap=True)
-CMAP_TABLES = LinearSegmentedColormap.from_list(
-    "table_cmap", ["teal", "gainsboro", "indianred"]
-)
+
+CMAP_TABLES = sns.color_palette("RdBu_r", as_cmap=True)
 CMAP_TABLES.set_bad(color="white", alpha=0)
 
 
@@ -112,7 +113,7 @@ for subset_name, MASK in subsets.items():
         gmap = gmap.clip(lower=0, upper=THRESHOLD)
 
         styled = styled.background_gradient(
-            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 1)
+            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 0.01)
         )
         styled = styled.apply(
             lambda x, gmap=gmap: [
@@ -127,6 +128,7 @@ for subset_name, MASK in subsets.items():
         )
         styled = styled.format(partial(format_func, threshold=THRESHOLD))
     styled = styled.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    styled
 
     # Save the styled DataFrame to HTML
     # For nice display in presentations
@@ -149,28 +151,28 @@ ls_dataframe = pd.DataFrame(
     columns=MODEL_NAMES_NICE,
 )
 
-skill_scores = 1 - ls_dataframe.div(ls_dataframe["oDistReg+GC"], axis=0)
+skill_scores = 1 - ls_dataframe.div(ls_dataframe["LEAR-N(0, $\Sigma$)"], axis=0)
 
-yp_min = -0.5
-yp_max = 0.1
+yp_min = -0.4
+yp_max = 0.2
 ys_min = -100
 ys_max = 800
 y_steps = 7
-line_styles = [":", "--", "-."] * 3
+line_styles = [":", "--", "-."] * 4
 
 ax = (
     skill_scores.filter(
-        regex="MvDistReg",
+        regex="ODR",
     )
-    .rolling(182, min_periods=7)
+    .rolling(182, min_periods=182)
     .mean()
-    .plot(cmap="turbo", figsize=(8, 4), lw=2, legend=False)
+    .plot(cmap="turbo", figsize=(10, 4), lw=2, legend=False)
 )
 for line, ls in zip(ax.get_lines(), line_styles):
     line.set_linestyle(ls)
 plt.ylim(yp_min, yp_max)
 plt.yticks(np.linspace(yp_min, yp_max, y_steps))
-plt.ylabel("Skill Score (Log-Score relative to oDis+GC)")
+plt.ylabel("Skill Score (Log-Score relative to LEAR-N(0,$\Sigma$))")
 prices.loc[skill_scores.index].mean(axis=1).plot(
     secondary_y=True,
     ax=plt.gca(),
@@ -197,9 +199,10 @@ plt.legend(
     unique.values(),
     unique.keys(),
     loc="lower center",
-    ncol=3,
+    ncol=4,
     bbox_to_anchor=(0.5, -0.4),
 )
+plt.axvline(x=181, color="black", ls=":", lw=1)
 
 
 plt.savefig(
@@ -221,7 +224,7 @@ plt.bar(
 )
 plt.gca().set_axisbelow(True)
 plt.grid(axis="y", ls=":")
-plt.ylim(-0.2, 0.05)
+plt.ylim(-0.2, 0.1)
 plt.xticks(rotation=90)
 plt.show(block=False)
 
@@ -230,7 +233,7 @@ plt.show(block=False)
 
 # %%
 # Create plots for RMSE and MAE by Hour
-LS_MAPPING = {"LARX": ":", "oDis": "--", "oMvD": "-"}
+
 LS = [LS_MAPPING[i[:4]] for i in MODEL_NAMES_NICE]
 
 error_mean = file["error_mean"]
@@ -304,31 +307,41 @@ error_crps = file["error_crps"].mean(-1)
 error_ls = file["ls"]
 prediction_band_cover = file["prediction_band_cover"]
 
+# %%
+error_es = file["es"]
+error_dss = file["dss"]
+error_vs = file["vs10"]
+
+# %%
 spreads = prices_test.max(1) - prices_test.min(1)
 mask_spread = np.where(spreads > np.quantile(spreads, 0.9))[0]
 mask_spikes_h = np.where(prices_test.max(1) > np.quantile(prices_test.max(1), 0.95))[0]
 mask_spikes_l = np.where(prices_test.min(1) < np.quantile(prices_test.min(1), 0.05))[0]
 mask_spike = np.unique(np.stack((mask_spikes_h, mask_spikes_l)))
 
-spike_analysis = pd.DataFrame(index=MODEL_NAMES)
-spike_analysis[("CRPS", "Spread", "Low")] = error_crps[~mask_spread].mean(0)
-spike_analysis[("CRPS", "Spread", "High")] = error_crps[mask_spread].mean(0)
-spike_analysis[("CRPS", "Spike", "Low")] = error_crps[~mask_spike].mean(0)
-spike_analysis[("CRPS", "Spike", "High")] = error_crps[mask_spike].mean(0)
+mask_no_spread = np.setdiff1d(np.arange(len(prices_test)), mask_spread)
+mask_no_spike = np.setdiff1d(np.arange(len(prices_test)), mask_spike)
 
-spike_analysis[("LS", "Spread", "Low")] = error_ls[~mask_spread].mean(0)
-spike_analysis[("LS", "Spread", "High")] = error_ls[mask_spread].mean(0)
-spike_analysis[("LS", "Spike", "Low")] = error_ls[~mask_spike].mean(0)
-spike_analysis[("LS", "Spike", "High")] = error_ls[mask_spike].mean(0)
+spike_analysis = pd.DataFrame(index=MODEL_NAMES)
+
+for c, s in zip(
+    ["CRPS", "LS", "$\\text{MC}_{0.95}$", "ES", "DSS", "VS"],
+    [error_crps, error_ls, prediction_band_cover, error_es, error_dss, error_vs],
+):
+    spike_analysis[(c, "Spread", "Low")] = s[mask_no_spread].mean(0)
+    spike_analysis[(c, "Spread", "High")] = s[mask_spread].mean(0)
+    spike_analysis[(c, "Spike", "Low")] = s[mask_no_spike].mean(0)
+    spike_analysis[(c, "Spike", "High")] = s[mask_spike].mean(0)
+
 
 spike_analysis[("$\\text{MC}_{0.95}$", "Spread", "Low")] = prediction_band_cover[
-    ~mask_spread
+    mask_no_spread
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spread", "High")] = prediction_band_cover[
     mask_spread
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spike", "Low")] = prediction_band_cover[
-    ~mask_spike
+    mask_no_spike
 ].mean(0) - (1 - 0.05)
 spike_analysis[("$\\text{MC}_{0.95}$", "Spike", "High")] = prediction_band_cover[
     mask_spike
@@ -353,23 +366,27 @@ spike_analysis_str = spike_analysis_str.rename(index=MODEL_NAMES_MAPPING)
 # Maybe we can make the background gradient based on
 # the change in the models ranking?
 # TODO: Need to add the model names
-style = spike_analysis_str.style
-for col in spike_analysis.columns:
-    style.background_gradient(
-        gmap=np.log(spike_analysis_gmap[col].values),
-        axis=0,
-        subset=[col],
-        cmap=CMAP_TABLES,
+
+for tab, cols in zip(
+    ["main", "app"],
+    [["CRPS", "LS", "$\\text{MC}_{0.95}$"], ["ES", "DSS", "VS"]],
+):
+    style = spike_analysis_str.loc[:, cols].style
+    for col in spike_analysis_str.loc[:, cols].columns:
+        style.background_gradient(
+            gmap=np.log(spike_analysis_gmap[col].values),
+            axis=0,
+            subset=[col],
+            cmap=CMAP_TABLES,
+        )
+    style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    style.to_latex(
+        f"experiments/epf_germany/tables/spike_analysis_{tab}.tex",
+        hrules=True,
+        convert_css=True,
+        multicol_align="c",
+        column_format="l" + "r" * spike_analysis_rank.shape[1],
     )
-# %%
-style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-style.to_latex(
-    "experiments/epf_germany/tables/spike_analysis.tex",
-    hrules=True,
-    convert_css=True,
-    multicol_align="c",
-    column_format="l" + "r" * spike_analysis_rank.shape[1],
-)
 
 # %%
 ### DIEBOLD MARIANO TEST
@@ -385,6 +402,7 @@ FULL_SCORE_NAMES = [
     "Log-Score",
 ]
 
+
 scores = np.stack((file["vs10"], file["es"], file["dss"], file["ls"]), axis=-1)
 for i, s in enumerate(FULL_SCORE_NAMES):
     for m1, m2 in product(range(N_MODELS), range(N_MODELS)):
@@ -399,7 +417,7 @@ for i, s in enumerate(FULL_SCORE_NAMES):
             # Skip ADF Test for CP because CP has NANs for the
             # multivariate Loss functions
             if not np.any(np.isnan(loss_differential)):
-                adf_test[i, m1, m2] = sm_tools.adfuller(
+                adf_test[i, m1, m2] = adfuller(
                     loss_differential,
                 )[1]
         if m1 == m2:
@@ -466,5 +484,3 @@ plt.show(block=False)
 for i in range(scores.shape[2]):
     sns.heatmap((np.round(adf_test, 2))[i], annot=True, cmap="coolwarm", center=0)
     plt.show(block=False)
-
-# %%
