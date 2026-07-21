@@ -106,13 +106,11 @@ for subset_name, MASK in subsets.items():
 
     for col in score_overview.columns:
         if col != "$\\text{MC}_{0.95}$":
-            gmap = np.log(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1e-10)
+            gmap = np.log(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1)
         else:
-            gmap = np.abs(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1e-10)
+            gmap = np.abs(score_overview[col])
 
-        styled = styled.background_gradient(
-            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 0.01)
-        )
+        styled = styled.background_gradient(subset=[col], cmap=CMAP_TABLES, gmap=gmap)
         styled = styled.apply(
             lambda x, gmap=gmap: [
                 (
@@ -126,7 +124,7 @@ for subset_name, MASK in subsets.items():
         )
         styled = styled.format(partial(format_func, threshold=THRESHOLD))
     styled = styled.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-    styled
+    display(styled)
 
     # Save the styled DataFrame to HTML
     # For nice display in presentations
@@ -370,13 +368,30 @@ for tab, cols in zip(
 ):
     style = spike_analysis_str.loc[:, cols].style
     for col in spike_analysis_str.loc[:, cols].columns:
-        style.background_gradient(
-            gmap=np.log(spike_analysis_gmap[col].values),
-            axis=0,
-            subset=[col],
-            cmap=CMAP_TABLES,
+
+        if col != "$\\text{MC}_{0.95}$":
+            gmap = np.log(spike_analysis_gmap[col] + 1)
+        else:
+            gmap = np.abs(spike_analysis_gmap[col])
+
+        style = style.background_gradient(
+            subset=[col], cmap=CMAP_TABLES, gmap=gmap.values, axis=0
         )
+        style = style.apply(
+            lambda x, gmap=gmap: [
+                (
+                    "font-weight: bold; text-decoration: underline"
+                    if v == gmap.idxmin()
+                    else ""
+                )
+                for v in x.index
+            ],
+            subset=[col],
+        )
+        # style = style.format(partial(format_func, threshold=THRESHOLD))
+
     style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    display(style)
     style.to_latex(
         f"experiments/epf_germany/tables/spike_analysis_{tab}.tex",
         hrules=True,
