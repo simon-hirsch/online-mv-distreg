@@ -63,10 +63,10 @@ file = np.load(file=os.path.join(FOLDER_RESULTS, "scores.npz"))
 MODEL_NAMES = file["model_names"]
 MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
 N_MODELS = len(MODEL_NAMES)
-THRESHOLD = 10000
+THRESHOLD = 5000
 
 
-def format_func(x, threshold=10000):
+def format_func(x, threshold=THRESHOLD):
     """Format the outout and replace NaN with "" and large values with $>10^4$"""
     if pd.isna(x):
         return ""
@@ -106,11 +106,9 @@ for subset_name, MASK in subsets.items():
 
     for col in score_overview.columns:
         if col != "$\\text{MC}_{0.95}$":
-            gmap = np.log(score_overview[col] + 1e-5)
+            gmap = np.log(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1e-10)
         else:
-            gmap = np.abs(score_overview[col] + 1e-5)
-
-        gmap = gmap.clip(lower=0, upper=THRESHOLD)
+            gmap = np.abs(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1e-10)
 
         styled = styled.background_gradient(
             subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 0.01)
@@ -142,7 +140,6 @@ for subset_name, MASK in subsets.items():
         os.path.join(FOLDER_TABLES, f"scoringrules_{subset_name}.html"),
         escape=False,
     )
-
 
 # %%
 ls_dataframe = pd.DataFrame(
