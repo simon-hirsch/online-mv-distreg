@@ -256,7 +256,7 @@ sns.heatmap(
     cmap=CMAP_CORR_AND_COV_MATS,
     cbar_kws={"label": r"Pearson Correlation $\rho$"},
     square=True,
-    annot=True,
+    # annot=True,
     annot_kws={"size": 7},
 )
 # plt.title("Correlation matrix \n Lower triangle shows unconditional correlation \n Upper triangle shows conditional on mean prediction")
