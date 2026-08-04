@@ -124,7 +124,7 @@ for subset_name, MASK in subsets.items():
         )
         styled = styled.format(partial(format_func, threshold=THRESHOLD))
     styled = styled.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-    display(styled)
+    # display(styled)
 
     # Save the styled DataFrame to HTML
     # For nice display in presentations
@@ -368,11 +368,14 @@ for tab, cols in zip(
 ):
     style = spike_analysis_str.loc[:, cols].style
     for col in spike_analysis_str.loc[:, cols].columns:
+        print(col)
 
-        if col != "$\\text{MC}_{0.95}$":
+        if col[0] != "$\\text{MC}_{0.95}$":
             gmap = np.log(spike_analysis_gmap[col] + 1)
+            print("Log-Normalizing gmap for column:", col)
         else:
             gmap = np.abs(spike_analysis_gmap[col])
+            print("Abs-Normalizing gmap for column:", col)
 
         style = style.background_gradient(
             subset=[col], cmap=CMAP_TABLES, gmap=gmap.values, axis=0
@@ -391,7 +394,7 @@ for tab, cols in zip(
         # style = style.format(partial(format_func, threshold=THRESHOLD))
 
     style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-    display(style)
+    # display(style)
     style.to_latex(
         f"experiments/epf_germany/tables/spike_analysis_{tab}.tex",
         hrules=True,
