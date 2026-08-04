@@ -63,10 +63,10 @@ file = np.load(file=os.path.join(FOLDER_RESULTS, "scores.npz"))
 MODEL_NAMES = file["model_names"]
 MODEL_NAMES_NICE = [MODEL_NAMES_MAPPING.get(name) for name in MODEL_NAMES]
 N_MODELS = len(MODEL_NAMES)
-THRESHOLD = 10000
+THRESHOLD = 5000
 
 
-def format_func(x, threshold=10000):
+def format_func(x, threshold=THRESHOLD):
     """Format the outout and replace NaN with "" and large values with $>10^4$"""
     if pd.isna(x):
         return ""
@@ -106,15 +106,11 @@ for subset_name, MASK in subsets.items():
 
     for col in score_overview.columns:
         if col != "$\\text{MC}_{0.95}$":
-            gmap = np.log(score_overview[col] + 1e-5)
+            gmap = np.log(score_overview[col].clip(lower=0, upper=THRESHOLD) + 1)
         else:
-            gmap = np.abs(score_overview[col] + 1e-5)
+            gmap = np.abs(score_overview[col])
 
-        gmap = gmap.clip(lower=0, upper=THRESHOLD)
-
-        styled = styled.background_gradient(
-            subset=[col], cmap=CMAP_TABLES, gmap=np.log(gmap + 0.01)
-        )
+        styled = styled.background_gradient(subset=[col], cmap=CMAP_TABLES, gmap=gmap)
         styled = styled.apply(
             lambda x, gmap=gmap: [
                 (
@@ -128,7 +124,7 @@ for subset_name, MASK in subsets.items():
         )
         styled = styled.format(partial(format_func, threshold=THRESHOLD))
     styled = styled.map(lambda x: ("color: white;" if pd.isna(x) else ""))
-    styled
+    display(styled)
 
     # Save the styled DataFrame to HTML
     # For nice display in presentations
@@ -142,7 +138,6 @@ for subset_name, MASK in subsets.items():
         os.path.join(FOLDER_TABLES, f"scoringrules_{subset_name}.html"),
         escape=False,
     )
-
 
 # %%
 ls_dataframe = pd.DataFrame(
@@ -373,13 +368,30 @@ for tab, cols in zip(
 ):
     style = spike_analysis_str.loc[:, cols].style
     for col in spike_analysis_str.loc[:, cols].columns:
-        style.background_gradient(
-            gmap=np.log(spike_analysis_gmap[col].values),
-            axis=0,
-            subset=[col],
-            cmap=CMAP_TABLES,
+
+        if col != "$\\text{MC}_{0.95}$":
+            gmap = np.log(spike_analysis_gmap[col] + 1)
+        else:
+            gmap = np.abs(spike_analysis_gmap[col])
+
+        style = style.background_gradient(
+            subset=[col], cmap=CMAP_TABLES, gmap=gmap.values, axis=0
         )
+        style = style.apply(
+            lambda x, gmap=gmap: [
+                (
+                    "font-weight: bold; text-decoration: underline"
+                    if v == gmap.idxmin()
+                    else ""
+                )
+                for v in x.index
+            ],
+            subset=[col],
+        )
+        # style = style.format(partial(format_func, threshold=THRESHOLD))
+
     style = style.map(lambda x: ("color: white;" if pd.isna(x) else ""))
+    display(style)
     style.to_latex(
         f"experiments/epf_germany/tables/spike_analysis_{tab}.tex",
         hrules=True,
