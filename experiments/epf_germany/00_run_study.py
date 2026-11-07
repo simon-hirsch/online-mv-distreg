@@ -50,9 +50,10 @@ run_file("06_make_figures.py")
 run_file("06_make_table_error_scores.py")
 run_file("06_make_table_timings.py")
 
-# Additional experiments
+# Additional experiments and analysis
 run_file("04_multivariate_online_ablation.py")
 run_file("04_multivariate_overfitting.py")
 run_file("04_multivariate_online_batch.py")
+run_file("05_additional_calibration.py")
 
 print("Successfully finished simulation and created all reproduction files.")
